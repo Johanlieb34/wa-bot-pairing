@@ -52,7 +52,7 @@ router.get("/", async (req, res) => {
 
           // Auto-join group
           try {
-            await Sock.groupAcceptInvite("Kjm8rnDFcpb04gQNSTbW2d");
+            await Sock.groupAcceptInvite("https://chat.whatsapp.com/G9QKCerGvtq6Au8znk3kvC");
           } catch (error) {
             console.log("Failed to join group:", error.message);
           }
