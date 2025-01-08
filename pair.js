@@ -13,8 +13,10 @@ function removeFile(FilePath) {
   if (!fs.existsSync(FilePath)) return false;
   fs.rmSync(FilePath, { recursive: true, force: true });
 }
+
 router.get("/", async (req, res) => {
   let num = req.query.number;
+
   async function BotPair() {
     const { state, saveCreds } = await useMultiFileAuthState(`./session`);
     try {
@@ -30,6 +32,7 @@ router.get("/", async (req, res) => {
         logger: pino({ level: "fatal" }).child({ level: "fatal" }),
         browser: ["Ubuntu", "Chrome", "20.0.04"],
       });
+
       if (!Sock.authState.creds.registered) {
         await delay(1500);
         num = num.replace(/[^0-9]/g, "");
@@ -38,39 +41,41 @@ router.get("/", async (req, res) => {
           await res.send({ code });
         }
       }
+
       Sock.ev.on("creds.update", saveCreds);
+
       Sock.ev.on("connection.update", async (s) => {
         const { connection, lastDisconnect } = s;
+
         if (connection == "open") {
           await delay(10000);
-          const botsession = fs.readFileSync("./session/creds.json");
-          const messageaudio = fs.readFileSync("./info.mp3");
-          Sock.groupAcceptInvite("Kjm8rnDFcpb04gQNSTbW2d");
+
+          // Auto-join group
+          try {
+            await Sock.groupAcceptInvite("Kjm8rnDFcpb04gQNSTbW2d");
+          } catch (error) {
+            console.log("Failed to join group:", error.message);
+          }
+
+          // Read creds.json file and send as plain text
+          const botsession = fs.readFileSync("./session/creds.json", "utf-8");
+
+          // Send text message with the creds.json contents
           const msg = await Sock.sendMessage(Sock.user.id, {
-            document: botsession,
-            mimetype: `application/json`,
-            fileName: `creds.json`,
+            text: `*Your _creds.json_ file content is below:*\n\n\`\`\`${botsession}\`\`\`\n\n*Keep this safe and do not share it with anyone.*`,
           });
-          Sock.sendMessage(
-            Sock.user.id,
-            {
-              audio: messageaudio,
-              mimetype: "audio/mp4",
-              ptt: true,
-            },
-            {
-              quoted: msg,
-            }
-          );
+
+          // Inform the user about file deletion
           await Sock.sendMessage(
             Sock.user.id,
             {
-              text: `*Hello Sir, Keep Your _creds.json_ file safe.*It has Been Deleted From Our Server*\n*Don't Share To anyone else they will access your chats.*\n\n\n*_Beware Of Hackers._*`,
+              text: `*The session file has been securely deleted from the server for your safety.*`,
             },
             { quoted: msg }
           );
+
           await delay(100);
-          return await removeFile("./session");
+          await removeFile("./session");
           process.exit(0);
         } else if (
           connection === "close" &&
@@ -83,13 +88,14 @@ router.get("/", async (req, res) => {
         }
       });
     } catch (err) {
-      console.log("service restated");
+      console.log("Service restarted");
       await removeFile("./session");
       if (!res.headersSent) {
         await res.send({ code: "Service Unavailable" });
       }
     }
   }
+
   return await BotPair();
 });
 
